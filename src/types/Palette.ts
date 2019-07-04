@@ -1,29 +1,32 @@
 import { assertNever } from "../util/assertNever";
+const primaryColors = <const> ['red', 'blue', 'green', 'black', 'white'];
+const secondaryColors = <const> ['brown', 'dark-green'];
+type Primary = typeof primaryColors[number];
+type Secondary = typeof secondaryColors[number];
 
-export type Color = 'white'
-                  | 'brown'
-                  | 'blue'
-                  | 'green'
-                  | 'purple'
-                  | 'dark-green'
-                  | 'brown-red'
-                  | 'light-brown'
-                  | 'gray'
+export type Color = Primary | Secondary
 
 let scale = { dark: 40, lo: 80, mid: 160, hi: 240}
-export function rgb(c: Color): string {
-    switch(c) {
-        case 'white': return `rgb(${scale.hi},${scale.hi},${scale.hi})`;
-        case 'blue': return `rgb(${scale.lo},${scale.lo},${scale.hi})`;
-        case 'light-brown': return `rgb(${scale.hi},${scale.mid},${scale.lo})`;
-        case 'brown': return `rgb(${scale.mid},${scale.lo},${scale.dark})`;
-        case 'brown-red': return `rgb(${scale.hi},${scale.lo},${scale.dark})`;
-        case 'green': return `rgb(${scale.lo},${scale.hi},${scale.lo})`;
-        case 'dark-green': return `rgb(${scale.dark},${scale.mid},${scale.hi})`;
-        case 'purple': return `rgb(${scale.hi},${scale.lo},${scale.hi})`;
-        case 'gray': return `rgb(${scale.lo},${scale.lo},${scale.lo})`;
-        // case 'light-gray': return `rgb(${scale.mid},${scale.mid},${scale.mid})`;
-        default: assertNever(c);
+function toTriple(c: Color): number[] {
+    let { hi, mid, lo, dark } = scale;
+    let r = lo, g = lo, b = lo;
+    switch (c) {
+        case 'white': r = hi; g = hi; b = hi; break;
+        case 'black': r = dark; g = dark; b = dark; break;
+        case 'blue': b = hi; break;
+        case 'red': r = hi; break;
+        case 'green': g = hi; break;
+        case 'brown': r = mid; g = lo; b= dark; break;
+        case 'dark-green': r = dark; g = mid; b = dark; break;
+        default: assertNever(c)
     }
-    return '#fff';
+
+    return [r,g,b]; //
+}
+let colorMap: { [key: string]: string } = {}
+export function rgb(c: Color): string {
+    if (!colorMap[c]) { //return colorMap[c]; }
+        colorMap[c] = `rgb(${toTriple(c).join(',')})`
+    }
+    return colorMap[c];
 }

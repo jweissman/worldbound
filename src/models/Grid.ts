@@ -1,61 +1,114 @@
+import { matrix, eachMatrixEntry } from '../util/matrix';
+import { distance } from '../util/distance';
 import { Location } from '../Location';
-import { matrixWithBackingArray } from '../util/matrix';
 import { Color } from '../types/Palette';
+import { flip } from '../util/flip';
 
-type ConwayConfig = {
+type ConwayConfig<T> = {
     active: boolean,
-    neighbors: number,
+    neighbors: T[],
     birth: number,
     lonely: number,
     starve: number,
 }
 type Conway = 'birth' | 'death' | 'unchanged'
 
-type ConwayCallback<T> = (instance: T, neighbors: number) => Conway | undefined;
+type ConwayCallback<T> = (value: T, neighbors: T[], location: Location) => Conway | undefined;
 
-export abstract class GridCell {
-    abstract get location(): Location;
-    abstract get color(): Color; 
-    abstract activate(): void;
-    abstract deactivate(): void;
-    abstract get active(): boolean;
+//export abstract class GridCell {
+//    public active: boolean = false;
+//    abstract get location(): Location;
+//    abstract get color(): Color; 
+//}
+
+// type GridValue = boolean | number
+
+interface GridConfig<T> {
+    initFn: (location: Location) => T
+    color?: (value: T) => Color
+    translucent?: boolean
+    isActive?: (value: T) => boolean
+    onActivate: (location: Location, grid: Grid<T>) => void
+    onDeactivate: (location: Location, grid: Grid<T>) => void
 }
 
-export class Grid<T extends GridCell> {
-    cellList: T[];
-    structure: number[][];
+export class Grid<T> {
+    structure: T[][];
+    static boolean(
+        dims: { x: number, y: number },
+        color: Color,
+        initFn: (location: Location) => boolean = () => flip(true, false),
+        translucent: boolean = false
+    ) {
+        return new Grid<boolean>(
+            dims.x,
+            dims.y,
+            {
+                initFn,
+                color: (val: boolean) => { return val && color || 'black' },
+                translucent,
+                onActivate: (location: Location, g: Grid<boolean>) => { //boolean[][]) => {
+                    if (g.withinBounds(location.x, location.y)) {
+                        g.structure[location.x][location.y] = true;
+                    }
+                },
+                onDeactivate: (location: Location, g: Grid<boolean>) => {
+                    if (g.withinBounds(location.x, location.y)) {
+                        g.structure[location.x][location.y] = false;
+                    }
+                }
+            }
+        )
+    }
+    // static integers(dims: { x: number, y: number }, color: Color, initFn: (location: Location) => number = () => Math.random(),
+    //                     min: number = 0.0, max: number = 1.0, inc: number = 0.1) {
+    //     return new Grid<number>(
+    //         dims.x,
+    //         dims.y,
+    //         {
+    //             initFn,
+    //             color: (val: number) => { return val > min && color || 'black' },
+    //             isActive: (value: number) => value > (max+min)/2,
+    //             onActivate: (location: Location, s: number[][]) => {
+    //                 s[location.x][location.y] += inc;
+    //                 s[location.x][location.y] = Math.min(inc, max);
+    //             },
+    //             onDeactivate: (location: Location, s: number[][]) => {
+    //                 s[location.x][location.y] -= inc;
+    //                 s[location.x][location.y] = Math.max(inc, min);
+    //             }
+    //         }
+    //     )
+    // }
 
-    constructor(private m: number, private n: number, fn: (x: number, y: number) => T) {
-        this.cellList = [];
-        this.structure = matrixWithBackingArray<T>(m, n, this.cellList, fn);
+    constructor(
+        public m: number,
+        public n: number,
+        public config: GridConfig<T>
+    ) {
+        this.structure = matrix<T>(m,n,config.initFn);
     }
 
-    list = (): T[] => {
-        return this.cellList;
+    isActive(value: T) {
+        if (this.config.isActive) {
+            return this.config.isActive(value)
+        } else {
+            return !!value
+        }
     }
 
-    each = (fn: (e: T) => any) => {
-        // eachMatrixEntry(this.structure, (idx) => {
-        //     // let cell = this.cellList[idx];
-        //     fn(this.cellList[idx]);
-        // })
-        // let m = this.structure;
-        // for (let i = 0; i < m.length; i++) {
-        //     for (let j = 0; j < m[i].length; j++) {
-        //         let c = this.cellList[m[i][j]];
-        //         fn(c); //m[i][j]); //, i, j);
-        //     }
-        // }
-        for (let i=0; i<this.cellList.length-1;i++) {
-            fn(this.cellList[i]);
+    colorFor(value: T): Color {
+        if (this.config.color) {
+            return this.config.color(value)
+        } else {
+            return 'white';
         }
     }
 
     at(location: Location): T | undefined {
         let { x, y } = location;
-        if (this.structure[x] && this.structure[x][y]) {
-            // let idx = this.structure[x][y];
-            return this.cellList[this.structure[x][y]];
+        if (this.withinBounds(location.x, location.y) && this.structure[x]) {
+            return this.structure[x][y];
         }
     }
 
@@ -86,28 +139,28 @@ export class Grid<T extends GridCell> {
         }
     }
 
-    static conway({ active, neighbors, birth, lonely, starve }: ConwayConfig): Conway {
+    conway({ active, neighbors, birth, lonely, starve }: ConwayConfig<T>): Conway {
+        let ns = Grid.count(neighbors, n => this.isActive(n))
         if (active) {
-            if (neighbors <= lonely || neighbors >= starve) {
+            if (ns <= lonely || ns >= starve) {
                 return 'death';
             }
         } else {
-            if (neighbors === birth) {
+            if (ns === birth) {
                 return 'birth';
             }
         }
         return 'unchanged';
     }
 
-    static simpleConway<T extends GridCell>(
+    simpleConway(
         birth: number = 3,
         lonely: number = 1,
         starve: number = 4
     ): ConwayCallback<T> {
-        return (cell: T, neighbors: number) => {
-            let { active } = cell;
-            return Grid.conway({
-                active,
+        return (cell: T, neighbors: T[]) => {
+            return this.conway({
+                active: this.isActive(cell),
                 neighbors,
                 birth,
                 lonely,
@@ -118,54 +171,73 @@ export class Grid<T extends GridCell> {
 
     static count<T>(list: T[], property: (t: T) => boolean) {
         return list.reduce((acc, curr) => property(curr) ? ++acc : acc, 0); 
-        // return list.filter(it => property(it)).length;
     }
 
-    neighborsMap: T[][][] = []
-    gatherNeighbors(cell: T): T[] {
-        let { x, y } = cell.location
-        let neighborCells;
-        if (this.neighborsMap[x] && this.neighborsMap[x][y]) {
-            neighborCells = this.neighborsMap[x][y]
+    withinBounds(x: number, y: number): boolean {
+        return x >= 0 && y >= 0 && x <= this.m && y <= this.n
+    }
+
+    gatherNeighbors(location: Location, radius: number = 1): T[] {
+        let neighborCells: T[] = [];
+        let { x, y } = location
+        if (radius === 1) {
+            let neighbors = Grid.neighbors(location)
+            neighbors.forEach(loc => {
+                let val = this.at(loc)
+                if (val !== undefined) {
+                    neighborCells.push(val)
+                }
+            })
         } else {
-            this.neighborsMap[x] = this.neighborsMap[x] || []
-            this.neighborsMap[x][y] = Grid.neighbors(cell.location)
-                .map(loc => this.at(loc))
-                .filter(neighbor => neighbor != undefined)
-                .flat()
-            neighborCells = this.neighborsMap[x][y]
+            let r = radius;
+            for (let i = x - r; i < x + r + 1; i++) {
+                for (let j = y - r; j < y + r + 1; j++) {
+                    let n = this.at({ x: i, y: j });
+                    if (n !== undefined && distance(i, x, j, y) <= r) {
+                        neighborCells.push(n)
+                    }
+                }
+            }
         }
         return neighborCells;
     }
-    judgeCell(cell: T, cb: ConwayCallback<T>, books: { life: Location[], death: Location[] }) {
-        let neighborCells: T[] = this.gatherNeighbors(cell);
-        let neighbors: number = Grid.count(neighborCells, (neighbor) => neighbor.active)
-        let judgment: Conway | undefined = cb(cell, neighbors)
+
+    judgeCell(location: Location, cell: T, cb: ConwayCallback<T>, books: { life: Location[], death: Location[] }) {
+        let neighbors: T[] = this.gatherNeighbors(location)
+        let judgment: Conway | undefined = cb(cell, neighbors, location)
 
         if (judgment) {
-            if (cell.active && judgment === 'death') {
-                books.death.push(cell.location)
-            } else if (!cell.active && judgment === 'birth') {
-                books.life.push(cell.location)
+            if (judgment === 'death') {
+                books.death.push(location)
+            } else if (judgment === 'birth') {
+                books.life.push(location)
             }
         }
     }
 
-    gol(cellCallback: ConwayCallback<T> = Grid.simpleConway()) {
+    gol(cellCallback: ConwayCallback<T> = this.simpleConway()) {
         let books: { life: Location[], death: Location[] } = { life: [], death: [] }
-        this.each((cell: T) => this.judgeCell(cell, cellCallback, books))
+        eachMatrixEntry(this.structure, (cell: T, x: number, y: number) => {
+            this.judgeCell({ x, y }, cell, cellCallback, books)
+        })
+        // console.log({books})
         books.life.forEach((location: Location) => {
-            let cell = this.at(location);
-            if (cell) {
-                cell.activate();
-            }
+            this.activate(location)
         })
-
         books.death.forEach((location: Location) => {
-            let cell = this.at(location);
-            if (cell) {
-                cell.deactivate();
-            }
+            this.deactivate(location)
         })
+    }
+
+    activate(location: Location) {
+        if (this.withinBounds(location.x, location.y)) {
+            this.config.onActivate(location, this)
+        }
+    }
+
+    deactivate(location: Location) {
+        if (this.withinBounds(location.x, location.y)) {
+            this.config.onDeactivate(location, this)
+        }
     }
 }
