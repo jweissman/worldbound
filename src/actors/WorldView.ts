@@ -1,8 +1,6 @@
 import { Actor, Events, Engine, Vector } from "excalibur";
 import { World } from "../models/World";
-// import { eachMatrixEntry } from "../util/matrix";
 import { Color, rgb } from "../types/Palette";
-import { Grid } from "../models/Grid";
 
 class WorldView extends Actor {
     world: World = new World();
@@ -16,7 +14,6 @@ class WorldView extends Actor {
         y: number,
         color: Color,
     ) {
-        
         if (color !== this.lastFilled) {
             ctx.fillStyle = rgb(color);
             this.lastFilled = color;
@@ -26,7 +23,6 @@ class WorldView extends Actor {
 
     draw(ctx: CanvasRenderingContext2D, delta: number) {
         this.emit('predraw', new Events.PreDrawEvent(ctx, delta, this));
-        // let m = this.colorMap;
         let m = this.world.layers['clouds'].structure
         if (m.length) {
             this.lastFilled = null;
@@ -37,18 +33,16 @@ class WorldView extends Actor {
             let y = this._onScreenYStart;
             const yEnd = Math.min(this._onScreenYEnd, rows);
             ctx.fillStyle='#642'
-            ctx.fillRect(x,y,cols*this.sz,rows*this.sz)
+            ctx.fillRect(x, y, cols * this.sz, rows * this.sz)
 
-            Object.entries(this.world.layers).forEach(([layer, grid]) => {
-            // for (let layer: Grid<boolean | number> in this.world.layers) {
-                // let c = layer.
+            Object.entries(this.world.layers).forEach(([_layer, grid]) => {
                 if (grid.config.translucent) {
-                    ctx.globalAlpha = 0.2
+                    ctx.globalAlpha = 0.6
                 }
                 for (let i = x; i < xEnd; i++) {
                     for (let j = y; j < yEnd; j++) {
                         let x = i, y = j;
-                        let value = grid.at({x,y})
+                        let value = grid.at({ x, y })
                         if (value !== undefined && grid.isActive(value)) {
                             let color = grid.colorFor(value)
                             if (color) {
@@ -61,6 +55,7 @@ class WorldView extends Actor {
                         }
                     }
                 }
+
                 if (grid.config.translucent) {
                     ctx.globalAlpha = 1.0
                 }
@@ -70,9 +65,7 @@ class WorldView extends Actor {
     }
 
     update(engine: Engine, delta: number) {
-        if (this.world.evolve()) {
-            // this.colorMap = this.world.colorMap;
-        }
+        this.world.evolve()
 
         const worldCoordsUpperLeft = engine.screenToWorldCoordinates(new Vector(0, 0));
         const worldCoordsLowerRight = engine.screenToWorldCoordinates(new Vector(engine.canvas.clientWidth, engine.canvas.clientHeight));

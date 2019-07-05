@@ -1,4 +1,4 @@
-import { Grid } from "../models/Grid";
+import Grid from "../models/Grid";
 
 export type StackLayers = {
     water: Grid<boolean>,
@@ -8,7 +8,7 @@ export type StackLayers = {
 }
 
 class Stack {
-    constructor(public layers: StackLayers) { };
+    constructor(public layers: StackLayers) {};
 }
 
 export default Stack;

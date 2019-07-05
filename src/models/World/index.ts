@@ -1,13 +1,11 @@
 import Stack, { StackLayers } from "../Stack";
-// import { SimpleCell } from "../SimpleCell";
-import { Grid } from "../Grid";
+import Grid from "../Grid";
 import { Location } from '../../Location';
-import { matrix, eachMatrixEntry, eachMatrixCoordinate } from "../../util/matrix";
-import { Color } from "../../types/Palette";
-// import { TerrainCell, WaterCell, VegetationCell, AtmosphereCell } from '../Cells';
+import { eachMatrixCoordinate } from "../../util/matrix";
 import { WorldConfig, defaultConfig } from "./WorldConfig";
 import { dimensions } from "./WorldSize";
 import { flip } from "../../util/flip";
+import { pick } from "../../util/pick";
 
 type Evolution = (layers: StackLayers) => void
 type Dimensions = { x: number, y: number }
@@ -21,33 +19,16 @@ export class World {
         this.dims = dimensions[config.size]
         this.stack = new Stack({
             water: Grid.boolean(this.dims, 'blue', () => flip(true, false, config.waterRatio)),
-            grass: Grid.boolean(this.dims, 'green', () => flip(true, false, 0.00)),
+            grass: Grid.boolean(this.dims, 'green', () => false), //flip(true, false, 0.00)),
+            // trees: Grid.boolean(this.dims, 'dark-green', () => flip),
+            // upperClouds: Grid.boolean(this.dims, 'gray', () => flip(true, false, config.cloudRatio), true),
+            // animals: Grid.boolean(this.dims, 'orange', () => false)
+            // people: Grid.boolean(this.dims, 'yellow', () => false)
             clouds: Grid.boolean(this.dims, 'white', () => flip(true, false, config.cloudRatio), true),
         })
     }
 
     get layers() { return this.stack.layers; }
-
-    get colorMap(): Color[][] {
-        let { grass, clouds, water } = this.layers;
-        const w: number = this.dims.x
-        const h: number = this.dims.y
-        const colorAtLocation = (layer: Grid<any>, location: Location): Color | undefined => {
-            let c = layer.at(location)
-            if (c && layer.isActive(c)) {
-                return layer.colorFor(c);
-            }
-        }
-        return matrix<Color>(w,h,(location: Location): Color => {
-            let atmo = colorAtLocation(clouds, location)
-            if (atmo) { return atmo; }
-            let veg = colorAtLocation(grass, location)
-            if (veg) { return veg; }
-            let h20 = colorAtLocation(water, location)
-            if (h20) { return h20; }
-            return 'brown';
-        });
-    };
 
     ticks = 0;
     evolve(): boolean {
@@ -72,14 +53,16 @@ export class World {
 
     static cloudsGather(layers: StackLayers): void {
         let { clouds, water } = layers;
-        clouds.gol((cell, neighbors, location) => {
-            let community = clouds.gatherNeighbors(location, 2) //1+Math.floor(Math.random()*2))
-            let cs = Grid.count(community, n => clouds.isActive(n))
+        clouds.gol((cell, _neighbors, location) => {
+            let community = clouds.gatherNeighbors(location,pick(1,3,5))
+            let cs = // Grid.count(community, n => !!n) //clouds.isActive(n))
+                // community.filter(Boolean).length 
+                community.reduce((acc, curr) => curr ? ++acc : acc, 0)
             let ratio = cs / community.length
             let chance = Math.random() < 0.13
-            let eps = 0.12
+            let eps = 0.05
             if (!cell) {
-                if (ratio > 0.5 + eps || (ratio > eps && chance) ) {
+                if (ratio > 0.5 + eps || (ratio > eps && chance) || (ratio > 2*eps && water.at(location) && chance)) {
                     return 'birth'
                 }
             } else if (cell) {
@@ -94,85 +77,53 @@ export class World {
     static grassGrows(layers: StackLayers): void {
         let { grass, clouds, water } = layers
         grass.gol((cell, neighbors, location) => {
-            // if (cell.kind !== 'grass') return;
-            // let { active, location } = cell;
-            // let chance = Math.random() < 0.78
-            // if (chance) {
-                let sky = clouds.at(location) //: AtmosphereCell | undefined = atmosphere.at(location)
-                let ocean = water.at(location) //: WaterCell | undefined = water.at(location)
-                let waterNeighbors: number = Grid.count(water.gatherNeighbors(location), n => !!n)
-                if (cell) {
-                    if (ocean || neighbors.length < 1) {
-                        return 'death';
-                    }
-                    if (Math.random() < 0.01) {
-                        return 'death'
-                    }
-                } else {
-                    if (Math.random() < 0.28) {
-                        if (!ocean) {
-                            if (
-                                sky && waterNeighbors > 0
-                            ) {
-                                return 'birth';
-                            }
-                            if (waterNeighbors > 0 && neighbors.length > 2) { 
-                                return 'birth';
-                            }
+            let sky = clouds.at(location)
+            let ocean = water.at(location)
+            let waterNeighbors: number = Grid.count(
+                water.gatherNeighbors(location), n => !!n)
+            if (cell) {
+                if (ocean || neighbors.length < 1) {
+                    return 'death';
+                }
+                if (Math.random() < 0.01) {
+                    return 'death'
+                }
+            } else {
+                if (Math.random() < 0.28) {
+                    if (!ocean) {
+                        if (
+                            sky && waterNeighbors > 0
+                        ) {
+                            return 'birth';
+                        }
+                        if (waterNeighbors > 0 && neighbors.length > 2) {
+                            return 'birth';
+                        }
 
-                            if (Math.random() < 0.05 && neighbors.length >= 2) {
-                                return 'birth'
-                            }
+                        if (Math.random() < 0.05 && neighbors.length >= 2) {
+                            return 'birth'
                         }
                     }
                 }
-                // }
-            // } else {
-            //     if (cell) {
-            //         if (Math.random() < 0.01) {
-            //             if (neighbors.length >= 3) { //vegetation.gatherNeighbors(cell))
-            //                 // grow tree?
-            //                 // cell.kind = 'tree'
-            //             } else {
-            //                 return flip('death', 'unchanged')
-            //             }
-            //         }
-            //     }
-            // }
+            }
         })
     }
 
     static oceanLevelsRise(layers: StackLayers): void {
         console.log("OCEAN LEVELS RISE")
-        // let r = Math.floor(Math.random()*3);
         let ocean: Location[] = [];
         let land: Location[] = [];
         let { water } = layers;
         eachMatrixCoordinate(water.structure, (x, y) => {
-        // for (let c of water.cellList) {
-        // water.each((c: WaterCell) => {
-            let location = {x,y}
-            let eps = 0.02 //274
-            let ns = water.gatherNeighbors(location, 4) //, 2) //, 1+2**r) //Math.floor(Math.random()*8))
-            let bc: number = Grid.count(ns, n => water.isActive(n))
+            let location = { x, y }
+            let eps = 0.02
+            let ns = water.gatherNeighbors(location, pick(1,2))
+            let bc: number = ns.reduce((acc, curr) => curr ? ++acc : acc, 0)
             let ratio = bc / ns.length
-            // if (ns.length !== bc) { console.log({ ns, bc }) }
-            // if (cell) {
             if (ratio < 0.5 - eps) { land.push(location); }
-            // } else {
             if (ratio > 0.5 + eps) { ocean.push(location); }
-            // }
         })
-        // console.log({ ocean, land })
-        ocean.forEach((loc: Location) => {
-            water.activate(loc)
-            // let c = water.at(loc);
-            // if (c) { water.activate() //.a//c.active = true; } //(); }
-        })
-        land.forEach((loc: Location) => {
-            water.deactivate(loc)
-            // let c: WaterCell | undefined = water.at(loc);
-            // if (c) { c.active = false; } //deactivate(); }
-        })
+        ocean.forEach((loc: Location) => { water.activate(loc) })
+        land.forEach((loc: Location) => { water.deactivate(loc) })
     }
 }

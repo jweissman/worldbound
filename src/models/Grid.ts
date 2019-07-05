@@ -32,7 +32,7 @@ interface GridConfig<T> {
     onDeactivate: (location: Location, grid: Grid<T>) => void
 }
 
-export class Grid<T> {
+export default class Grid<T> {
     structure: T[][];
     static boolean(
         dims: { x: number, y: number },
@@ -139,6 +139,34 @@ export class Grid<T> {
         }
     }
 
+    static communityMap: Location[][][][] = []
+    static community(location: Location, radius: number): Location[] {
+        let {x,y} = location;
+        let r = radius;
+        if (r === 1) { return Grid.neighbors(location) }
+        if (Grid.communityMap[r] && Grid.communityMap[r][x] && Grid.communityMap[r][x][y]) {
+            return Grid.communityMap[r][x][y];
+        } else {
+            let r = radius;
+            let list: Location[] = []
+            for (let i = x - r; i < x + r + 1; i++) {
+                for (let j = y - r; j < y + r + 1; j++) {
+                    // let n = this.at({ x: i, y: j });
+                    if (distance(i, x, j, y) <= r) {
+                        let loc: Location = {x,y}
+                        list.push(loc) //{x,y})
+                    }
+                }
+            }
+
+            Grid.communityMap[r] = Grid.communityMap[r] || [];
+            Grid.communityMap[r][x] = Grid.communityMap[r][x] || [];
+            Grid.communityMap[r][x][y] = list;
+
+            return list;
+        }
+    }
+
     conway({ active, neighbors, birth, lonely, starve }: ConwayConfig<T>): Conway {
         let ns = Grid.count(neighbors, n => this.isActive(n))
         if (active) {
@@ -178,27 +206,20 @@ export class Grid<T> {
     }
 
     gatherNeighbors(location: Location, radius: number = 1): T[] {
+        if (radius < 1) { throw new Error("Neighborhoods must have a radius > 1")}
         let neighborCells: T[] = [];
-        let { x, y } = location
+        let neighbors = []
         if (radius === 1) {
-            let neighbors = Grid.neighbors(location)
-            neighbors.forEach(loc => {
-                let val = this.at(loc)
-                if (val !== undefined) {
-                    neighborCells.push(val)
-                }
-            })
+            neighbors = Grid.neighbors(location)
         } else {
-            let r = radius;
-            for (let i = x - r; i < x + r + 1; i++) {
-                for (let j = y - r; j < y + r + 1; j++) {
-                    let n = this.at({ x: i, y: j });
-                    if (n !== undefined && distance(i, x, j, y) <= r) {
-                        neighborCells.push(n)
-                    }
-                }
-            }
+            neighbors = Grid.community(location, radius)
         }
+        neighbors.forEach(loc => {
+            let val = this.at(loc)
+            if (val !== undefined) {
+                neighborCells.push(val)
+            }
+        })
         return neighborCells;
     }
 
