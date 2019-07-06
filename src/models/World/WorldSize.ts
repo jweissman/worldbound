@@ -1,4 +1,4 @@
-const unit = 80;
+const unit = 30;
 export const dimensions = {
     tiny:     { x: unit*2, y: unit*1 },
     small:    { x: unit*4, y: unit*3 },

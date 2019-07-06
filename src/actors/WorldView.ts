@@ -5,7 +5,7 @@ import { Color, rgb } from "../types/Palette";
 class WorldView extends Actor {
     world: World = new World();
     colorMap: Color[][] = [];
-    sz: number = 12
+    sz: number = 16
 
     lastFilled: Color | null = null;
     private drawCell(
@@ -40,17 +40,18 @@ class WorldView extends Actor {
                 if (grid.config.translucent) {
                     ctx.globalAlpha = 0.6
                 }
-                for (let i = x; i < xEnd; i++) {
-                    for (let j = y; j < yEnd; j++) {
-                        let x = i, y = j;
-                        let value = grid.at({ x, y })
-                        if (value) {
-                            let color = grid.config.color //colorFor(value)
-                            if (color) {
-                                if (color !== this.lastFilled) {
-                                    ctx.fillStyle = rgb(color);
-                                    this.lastFilled = color;
-                                }
+                let color = grid.config.color //colorFor(value)
+                if (color) {
+                    if (color !== this.lastFilled) {
+                        ctx.fillStyle = rgb(color);
+                        this.lastFilled = color;
+                    }
+                    for (let i = x; i < xEnd; i++) {
+                        for (let j = y; j < yEnd; j++) {
+                            let x = i, y = j;
+                            let value = grid.at({ x, y })
+                            if (value) {
+
                                 ctx.fillRect(x * this.sz, y * this.sz, this.sz, this.sz);
                             }
                         }

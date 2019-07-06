@@ -1233,6 +1233,11 @@
   dependencies:
     "@babel/types" "^7.3.0"
 
+"@types/bit-array@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@types/bit-array/-/bit-array-0.2.1.tgz#98246b01cbe82280f74a2d40cb38a610caab1127"
+  integrity sha1-mCRrAcvoIoD3Si1AyzimEMqrESc=
+
 "@types/istanbul-lib-coverage@*", "@types/istanbul-lib-coverage@^2.0.0":
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/@types/istanbul-lib-coverage/-/istanbul-lib-coverage-2.0.1.tgz#42995b446db9a48a11a07ec083499a860e9138ff"
@@ -2062,6 +2067,11 @@ binary-extensions@^1.0.0:
   version "1.13.1"
   resolved "https://registry.yarnpkg.com/binary-extensions/-/binary-extensions-1.13.1.tgz#598afe54755b2868a5330d2aff9d4ebb53209b65"
   integrity sha512-Un7MIEDdUC5gNpcGDV97op1Ywk748MpHcFTHoYs6qnj1Z3j7I53VG3nwZhKzoBZmbdRNnb6WRdFlwl7tSDuZGw==
+
+bit-array@^0.2.2:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/bit-array/-/bit-array-0.2.2.tgz#6a7956e4e7fb57d4f1e74825cd4a9828694b2753"
+  integrity sha1-anlW5Of7V9Tx50glzUqYKGlLJ1M=
 
 bluebird@^3.5.3:
   version "3.5.4"

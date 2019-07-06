@@ -6,6 +6,7 @@ import { flip } from '../util/flip';
 import { iota } from '../util/iota';
 import { count } from '../util/count';
 import { pick } from '../util/pick';
+import BitArray from 'bit-array';
 
 type ConwayConfig = {
     active: boolean,
@@ -24,6 +25,26 @@ interface GridConfig {
     translucent?: boolean
 }
 
+class GridStructure {
+    private elements: BitArray
+    constructor(private m: number, private n: number) {
+        this.elements = new BitArray(m*n)
+    }
+
+    setAll(elems: boolean[]) {
+        // this.elements = new BitArray(this.m*this.n)
+        // this.elements.reset(); // = elems;
+    }
+
+    at(x: number, y: number): boolean {
+        return this.elements.get(y * this.n + x);
+    }
+
+    set(x: number, y: number, value: boolean): void {
+        this.elements.set(y*this.n+x, value);
+    }
+}
+
 export default class Grid {
     static assemble(
         dims: { x: number, y: number },
@@ -38,14 +59,15 @@ export default class Grid {
             { initFn, color, translucent, }
         )
     }
+
+    private structure: GridStructure
     
-    elements: boolean[]
     constructor(
         public m: number,
         public n: number,
         public config: GridConfig
     ) {
-        this.elements = new Array(m*n)
+        this.structure = new GridStructure(m,n);
         iota(m).forEach(i => iota(n).forEach((j) => {
             let loc={x:i,y:j}
             this.put(loc, config.initFn(loc))
@@ -64,7 +86,7 @@ export default class Grid {
     at(location: Location): boolean | undefined { //} | undefined {
         let { x, y } = location;
         if (this.withinBounds(x,y)) {
-            return this.elements[y*this.m+x];
+            return this.structure.at(x,y)
         }
     }
 
@@ -72,7 +94,7 @@ export default class Grid {
     put(location: Location, value: boolean) {
         // console.log("PUT", { location, value, color: this.config.color })
         let { x, y } = location;
-        this.elements[y*this.m+x] = value;
+        return this.structure.set(x,y,value)
     }
 
     private get(x: number, y: number): boolean | undefined {
@@ -92,7 +114,7 @@ export default class Grid {
                 }
             }
         }
-        this.elements = newElements;
+        this.structure.setAll(newElements);
     }
 
     static neighborsMap: Location[][][] = []
