@@ -5,7 +5,7 @@ import { Color, rgb } from "../types/Palette";
 class WorldView extends Actor {
     world: World = new World();
     colorMap: Color[][] = [];
-    sz: number = 8
+    sz: number = 12
 
     lastFilled: Color | null = null;
     private drawCell(
@@ -23,17 +23,18 @@ class WorldView extends Actor {
 
     draw(ctx: CanvasRenderingContext2D, delta: number) {
         this.emit('predraw', new Events.PreDrawEvent(ctx, delta, this));
-        let m = this.world.layers['clouds'].structure
-        if (m.length) {
+        let clouds = this.world.layers['clouds'] //.m
+        // this.world.
+        // if (m.length) {
             this.lastFilled = null;
 
-            let rows = m[1].length, cols = m.length;
-            let x = this._onScreenXStart;
-            const xEnd = Math.min(this._onScreenXEnd, cols);
-            let y = this._onScreenYStart;
-            const yEnd = Math.min(this._onScreenYEnd, rows);
+            let rows = clouds.m, cols = clouds.n;
+            let x = 0; //this._onScreenXStart;
+            const xEnd = clouds.m; //Math.min(this._onScreenXEnd, cols);
+            let y = 0; //this._onScreenYStart;
+            const yEnd = clouds.n; //Math.min(this._onScreenYEnd, rows);
             ctx.fillStyle='#642'
-            ctx.fillRect(x, y, cols * this.sz, rows * this.sz)
+            ctx.fillRect(x, y, rows * this.sz, cols * this.sz)
 
             Object.entries(this.world.layers).forEach(([_layer, grid]) => {
                 if (grid.config.translucent) {
@@ -43,8 +44,8 @@ class WorldView extends Actor {
                     for (let j = y; j < yEnd; j++) {
                         let x = i, y = j;
                         let value = grid.at({ x, y })
-                        if (value !== undefined && grid.isActive(value)) {
-                            let color = grid.colorFor(value)
+                        if (value) {
+                            let color = grid.config.color //colorFor(value)
                             if (color) {
                                 if (color !== this.lastFilled) {
                                     ctx.fillStyle = rgb(color);
@@ -60,7 +61,7 @@ class WorldView extends Actor {
                     ctx.globalAlpha = 1.0
                 }
             })
-        }
+        // }
         this.emit('postdraw', new Events.PreDrawEvent(ctx, delta, this));
     }
 

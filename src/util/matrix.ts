@@ -39,11 +39,13 @@ export function eachMatrixEntry<T>(
     }
 }
 export function eachMatrixCoordinate<T>(
-    m: T[][],
+    m: number,
+    n: number,
+    // m: T[][],
     fn: (i: number, j: number) => any
 ): void {
-    for (let i=0; i<m.length; i++) {
-        for (let j=0; j<m[i].length; j++) {
+    for (let i=0; i<m; i++) {
+        for (let j=0; j<n; j++) {
             fn(i, j);
         }
     }

@@ -1,119 +1,98 @@
 import { matrix, eachMatrixEntry } from '../util/matrix';
 import { distance } from '../util/distance';
-import { Location } from '../Location';
+import { Location } from '../types/Location';
 import { Color } from '../types/Palette';
 import { flip } from '../util/flip';
+import { iota } from '../util/iota';
+import { count } from '../util/count';
+import { pick } from '../util/pick';
 
-type ConwayConfig<T> = {
+type ConwayConfig = {
     active: boolean,
-    neighbors: T[],
+    neighbors: boolean[],
     birth: number,
     lonely: number,
     starve: number,
 }
 type Conway = 'birth' | 'death' | 'unchanged'
 
-type ConwayCallback<T> = (value: T, neighbors: T[], location: Location) => Conway | undefined;
+type ConwayCallback = (value: boolean, neighbors: boolean[], location: Location) => Conway | undefined;
 
-//export abstract class GridCell {
-//    public active: boolean = false;
-//    abstract get location(): Location;
-//    abstract get color(): Color; 
-//}
-
-// type GridValue = boolean | number
-
-interface GridConfig<T> {
-    initFn: (location: Location) => T
-    color?: (value: T) => Color
+interface GridConfig {
+    initFn: (location: Location) => boolean
+    color?: Color
     translucent?: boolean
-    isActive?: (value: T) => boolean
-    onActivate: (location: Location, grid: Grid<T>) => void
-    onDeactivate: (location: Location, grid: Grid<T>) => void
 }
 
-export default class Grid<T> {
-    structure: T[][];
-    static boolean(
+export default class Grid {
+    static assemble(
         dims: { x: number, y: number },
         color: Color,
         initFn: (location: Location) => boolean = () => flip(true, false),
         translucent: boolean = false
     ) {
-        return new Grid<boolean>(
+        console.log("assemble grid", { dims, color })
+        return new Grid(
             dims.x,
             dims.y,
-            {
-                initFn,
-                color: (val: boolean) => { return val && color || 'black' },
-                translucent,
-                onActivate: (location: Location, g: Grid<boolean>) => { //boolean[][]) => {
-                    if (g.withinBounds(location.x, location.y)) {
-                        g.structure[location.x][location.y] = true;
-                    }
-                },
-                onDeactivate: (location: Location, g: Grid<boolean>) => {
-                    if (g.withinBounds(location.x, location.y)) {
-                        g.structure[location.x][location.y] = false;
-                    }
-                }
-            }
+            { initFn, color, translucent, }
         )
     }
-    // static integers(dims: { x: number, y: number }, color: Color, initFn: (location: Location) => number = () => Math.random(),
-    //                     min: number = 0.0, max: number = 1.0, inc: number = 0.1) {
-    //     return new Grid<number>(
-    //         dims.x,
-    //         dims.y,
-    //         {
-    //             initFn,
-    //             color: (val: number) => { return val > min && color || 'black' },
-    //             isActive: (value: number) => value > (max+min)/2,
-    //             onActivate: (location: Location, s: number[][]) => {
-    //                 s[location.x][location.y] += inc;
-    //                 s[location.x][location.y] = Math.min(inc, max);
-    //             },
-    //             onDeactivate: (location: Location, s: number[][]) => {
-    //                 s[location.x][location.y] -= inc;
-    //                 s[location.x][location.y] = Math.max(inc, min);
-    //             }
-    //         }
-    //     )
-    // }
-
+    
+    elements: boolean[]
     constructor(
         public m: number,
         public n: number,
-        public config: GridConfig<T>
+        public config: GridConfig
     ) {
-        this.structure = matrix<T>(m,n,config.initFn);
+        this.elements = new Array(m*n)
+        iota(m).forEach(i => iota(n).forEach((j) => {
+            let loc={x:i,y:j}
+            this.put(loc, config.initFn(loc))
+        }));
+        // if (config.initFn) {}
     }
 
-    isActive(value: T) {
-        if (this.config.isActive) {
-            return this.config.isActive(value)
-        } else {
-            return !!value
-        }
-    }
+    //colorFor(value: T): Color {
+    //    if (this.config.color) {
+    //        return this.config.color(value)
+    //    } else {
+    //        return 'white';
+    //    }
+    //}
 
-    colorFor(value: T): Color {
-        if (this.config.color) {
-            return this.config.color(value)
-        } else {
-            return 'white';
-        }
-    }
-
-    at(location: Location): T | undefined {
+    at(location: Location): boolean | undefined { //} | undefined {
         let { x, y } = location;
-        if (this.withinBounds(location.x, location.y) && this.structure[x]) {
-            return this.structure[x][y];
+        if (this.withinBounds(x,y)) {
+            return this.elements[y*this.m+x];
         }
     }
 
-    private get(x: number, y: number): T | undefined {
+
+    put(location: Location, value: boolean) {
+        // console.log("PUT", { location, value, color: this.config.color })
+        let { x, y } = location;
+        this.elements[y*this.m+x] = value;
+    }
+
+    private get(x: number, y: number): boolean | undefined {
         return this.at({ x, y })
+    }
+
+    shift(dx: number, dy: number, empty: () => boolean = () => flip(true, false)) {
+        let newElements = [];
+        for (let i = 0; i < this.m; i++) {
+            for (let j = 0; j < this.n; j++) {
+                let x = i, y = j;
+                let cell = this.at({x: x+dx,y: y+dy})
+                if (cell !== undefined) {
+                    newElements[y*this.m+x] = cell;
+                } else {
+                     newElements[y*this.m+x] = empty()
+                }
+            }
+        }
+        this.elements = newElements;
     }
 
     static neighborsMap: Location[][][] = []
@@ -144,8 +123,9 @@ export default class Grid<T> {
         let {x,y} = location;
         let r = radius;
         if (r === 1) { return Grid.neighbors(location) }
-        if (Grid.communityMap[r] && Grid.communityMap[r][x] && Grid.communityMap[r][x][y]) {
-            return Grid.communityMap[r][x][y];
+        // if (Grid.communityMap[r] && Grid.communityMap[r][x] && Grid.communityMap[r][x][y]) {
+        if (Grid.communityMap[x] && Grid.communityMap[x][y] && Grid.communityMap[x][y][r]) {
+            return Grid.communityMap[x][y][r];
         } else {
             let r = radius;
             let list: Location[] = []
@@ -159,16 +139,16 @@ export default class Grid<T> {
                 }
             }
 
-            Grid.communityMap[r] = Grid.communityMap[r] || [];
-            Grid.communityMap[r][x] = Grid.communityMap[r][x] || [];
-            Grid.communityMap[r][x][y] = list;
+            Grid.communityMap[x] = Grid.communityMap[x] || [];
+            Grid.communityMap[x][y] = Grid.communityMap[x][y] || [];
+            Grid.communityMap[x][y][r] = list;
 
             return list;
         }
     }
 
-    conway({ active, neighbors, birth, lonely, starve }: ConwayConfig<T>): Conway {
-        let ns = Grid.count(neighbors, n => this.isActive(n))
+    conway({ active, neighbors, birth, lonely, starve }: ConwayConfig): Conway {
+        let ns = count(neighbors, Boolean) //n => n) //this.isActive(n))
         if (active) {
             if (ns <= lonely || ns >= starve) {
                 return 'death';
@@ -185,10 +165,10 @@ export default class Grid<T> {
         birth: number = 3,
         lonely: number = 1,
         starve: number = 4
-    ): ConwayCallback<T> {
-        return (cell: T, neighbors: T[]) => {
+    ): ConwayCallback {
+        return (cell: boolean, neighbors: boolean[]) => {
             return this.conway({
-                active: this.isActive(cell),
+                active: cell, //: this.isActive(cell),
                 neighbors,
                 birth,
                 lonely,
@@ -197,34 +177,32 @@ export default class Grid<T> {
         };
     }
 
-    static count<T>(list: T[], property: (t: T) => boolean) {
-        return list.reduce((acc, curr) => property(curr) ? ++acc : acc, 0); 
-    }
-
     withinBounds(x: number, y: number): boolean {
         return x >= 0 && y >= 0 && x <= this.m && y <= this.n
     }
 
-    gatherNeighbors(location: Location, radius: number = 1): T[] {
+    gatherNeighbors(location: Location, radius: number = 1): boolean[] {
         if (radius < 1) { throw new Error("Neighborhoods must have a radius > 1")}
-        let neighborCells: T[] = [];
-        let neighbors = []
+        let neighbors: Location[] = []
         if (radius === 1) {
             neighbors = Grid.neighbors(location)
         } else {
             neighbors = Grid.community(location, radius)
         }
-        neighbors.forEach(loc => {
-            let val = this.at(loc)
+        let neighborCells: boolean[] = [];
+        for (let loc of neighbors) {
+        // for (let i=0; i<neighbors.length; i++) {
+        // neighbors.forEach(loc => {
+            let val = this.at(loc) //neighbors[i])
             if (val !== undefined) {
                 neighborCells.push(val)
             }
-        })
+        }
         return neighborCells;
     }
 
-    judgeCell(location: Location, cell: T, cb: ConwayCallback<T>, books: { life: Location[], death: Location[] }) {
-        let neighbors: T[] = this.gatherNeighbors(location)
+    judgeCell(radius: number = 1, location: Location, cell: boolean, cb: ConwayCallback, books: { life: Location[], death: Location[] }) {
+        let neighbors: boolean[] = this.gatherNeighbors(location, radius)
         let judgment: Conway | undefined = cb(cell, neighbors, location)
 
         if (judgment) {
@@ -236,12 +214,17 @@ export default class Grid<T> {
         }
     }
 
-    gol(cellCallback: ConwayCallback<T> = this.simpleConway()) {
+    gol(cellCallback: ConwayCallback = this.simpleConway(), radius: number = 1) {
         let books: { life: Location[], death: Location[] } = { life: [], death: [] }
-        eachMatrixEntry(this.structure, (cell: T, x: number, y: number) => {
-            this.judgeCell({ x, y }, cell, cellCallback, books)
-        })
-        // console.log({books})
+        for (let i = 0; i < this.m; i++) {
+            for (let j = 0; j < this.n; j++) {
+                let x = i, y = j;
+                let cell = this.at({x,y})
+                if (cell !== undefined) {
+                    this.judgeCell(radius, { x, y }, cell, cellCallback, books)
+                }
+            }
+        }
         books.life.forEach((location: Location) => {
             this.activate(location)
         })
@@ -252,13 +235,47 @@ export default class Grid<T> {
 
     activate(location: Location) {
         if (this.withinBounds(location.x, location.y)) {
-            this.config.onActivate(location, this)
+            this.put(location, true)
+            // this.config.onActivate(location, this)
         }
     }
 
     deactivate(location: Location) {
         if (this.withinBounds(location.x, location.y)) {
-            this.config.onDeactivate(location, this)
+            // this.config.onDeactivate(location, this)
+            this.put(location, false)
         }
+    }
+
+    noise(fz=0.1) {
+         for (let i = 0; i < this.m; i++) {
+            for (let j = 0; j < this.n; j++) {
+                if (Math.random() < fz) {
+                    let x = i, y = j;
+                    let cell = this.at({ x, y })
+                    if (cell !== undefined) {
+                        this.put({x,y}, flip(true, false))
+                    }
+                }
+            }
+        }
+    }
+
+    smooth(radius: number = pick(1, 2), eps = 0.25) {
+        this.gol((cell, community, _location) => {
+            // let community = this.gatherNeighbors(location, radius) //pick(2,3,4))
+            let cs = community.reduce((acc, curr) => curr ? ++acc : acc, 0)
+            let ratio = cs / community.length
+            let base = 0.5 //, eps = 0.24
+            if (!cell) {
+                if (ratio > base + eps) {
+                    return 'birth'
+                }
+            } else if (cell) {
+                if (ratio < base - eps) {
+                    return 'death'
+                }
+            }
+        }, radius)
     }
 }
