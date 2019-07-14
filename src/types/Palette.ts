@@ -1,6 +1,8 @@
 import { assertNever } from "../util/assertNever";
-const primaryColors = <const> ['red', 'blue', 'green', 'black', 'white'];
-const secondaryColors = <const> ['brown', 'dark-green'];
+const primaryColors = [
+    'red', 'blue', 'green', 'black', 'white'
+] as const;
+const secondaryColors = ['brown', 'light-brown', 'dark-green', 'pink'] as const;
 type Primary = typeof primaryColors[number];
 type Secondary = typeof secondaryColors[number];
 
@@ -15,8 +17,10 @@ function toTriple(c: Color): number[] {
         case 'black': r = dark; g = dark; b = dark; break;
         case 'blue': b = hi; break;
         case 'red': r = hi; break;
+        case 'pink': r = hi; g= mid; b = mid; break;
         case 'green': g = hi; break;
         case 'brown': r = mid; g = lo; b= dark; break;
+        case 'light-brown': r = hi; g = mid; b = lo; break;
         case 'dark-green': r = dark; g = mid; b = dark; break;
         default: assertNever(c)
     }

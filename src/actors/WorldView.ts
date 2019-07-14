@@ -3,11 +3,14 @@ import { World } from "../models/World";
 import { Color, rgb } from "../types/Palette";
 
 class WorldView extends Actor {
-    world: World = new World();
     colorMap: Color[][] = [];
-    sz: number = 16
-
+    sz: number = 8
     lastFilled: Color | null = null;
+
+    constructor(public world: World) {
+        super();
+    }
+
     private drawCell(
         ctx: CanvasRenderingContext2D,
         x: number,
@@ -28,11 +31,12 @@ class WorldView extends Actor {
         // if (m.length) {
             this.lastFilled = null;
 
+            let frame = 3;
             let rows = clouds.m, cols = clouds.n;
-            let x = 0; //this._onScreenXStart;
-            const xEnd = clouds.m; //Math.min(this._onScreenXEnd, cols);
-            let y = 0; //this._onScreenYStart;
-            const yEnd = clouds.n; //Math.min(this._onScreenYEnd, rows);
+            let x = this._onScreenXStart;
+            const xEnd = Math.min(this._onScreenXEnd, clouds.m-frame); 
+            let y = this._onScreenYStart;
+            const yEnd = Math.min(this._onScreenYEnd, clouds.n-frame); //Math.min(this._onScreenYEnd, rows);
             ctx.fillStyle='#642'
             ctx.fillRect(x, y, rows * this.sz, cols * this.sz)
 
@@ -48,11 +52,14 @@ class WorldView extends Actor {
                     }
                     for (let i = x; i < xEnd; i++) {
                         for (let j = y; j < yEnd; j++) {
-                            let x = i, y = j;
-                            let value = grid.at({ x, y })
+                            let x0 = i, y0 = j;
+                            let value = grid.at({ x: x0, y: y0 })
                             if (value) {
-
-                                ctx.fillRect(x * this.sz, y * this.sz, this.sz, this.sz);
+                                ctx.fillRect(
+                                    x0 * this.sz,
+                                    y0 * this.sz,
+                                    this.sz, this.sz
+                                );
                             }
                         }
                     }
@@ -67,7 +74,6 @@ class WorldView extends Actor {
     }
 
     update(engine: Engine, delta: number) {
-        this.world.evolve()
 
         const worldCoordsUpperLeft = engine.screenToWorldCoordinates(new Vector(0, 0));
         const worldCoordsLowerRight = engine.screenToWorldCoordinates(new Vector(engine.canvas.clientWidth, engine.canvas.clientHeight));

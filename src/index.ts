@@ -4,6 +4,7 @@
 // import App from './App';
 // import * as serviceWorker from './serviceWorker';
 import { Game } from './Game';
+import { World } from './models/World';
 
 // ReactDOM.render(<App />, document.getElementById('root'));
 
@@ -12,7 +13,8 @@ import { Game } from './Game';
 // Learn more about service workers: https://bit.ly/CRA-PWA
 // serviceWorker.unregister();
 
-let game: Game = new Game()
+let world: World = new World()
+let game: Game = new Game(world)
 // game.backgroundColor = Color.Black.clone().lighten(0.02)
 
 // game.add(cells)

@@ -1,23 +1,12 @@
-import { matrix, eachMatrixEntry } from '../util/matrix';
 import { distance } from '../util/distance';
 import { Location } from '../types/Location';
 import { Color } from '../types/Palette';
 import { flip } from '../util/flip';
 import { iota } from '../util/iota';
-import { count } from '../util/count';
 import { pick } from '../util/pick';
 import BitArray from 'bit-array';
-
-type ConwayConfig = {
-    active: boolean,
-    neighbors: boolean[],
-    birth: number,
-    lonely: number,
-    starve: number,
-}
-type Conway = 'birth' | 'death' | 'unchanged'
-
-type ConwayCallback = (value: boolean, neighbors: boolean[], location: Location) => Conway | undefined;
+import { Conway, ConwayCallback, simpleConway } from './Conway';
+import { eachMatrixCoordinate } from '../util/matrix';
 
 interface GridConfig {
     initFn: (location: Location) => boolean
@@ -26,22 +15,34 @@ interface GridConfig {
 }
 
 class GridStructure {
-    private elements: BitArray
+    private elements: BitArray // 224ms get on 62s profile
     constructor(private m: number, private n: number) {
-        this.elements = new BitArray(m*n)
+        this.elements = new BitArray(m*n) //(m-1)*(n-1))
     }
 
     setAll(elems: boolean[]) {
-        // this.elements = new BitArray(this.m*this.n)
-        // this.elements.reset(); // = elems;
+        // this.elements = elems;
+        this.elements.reset()
+        elems.forEach((elem, idx) => this.elements.set(idx, elem))
     }
 
     at(x: number, y: number): boolean {
-        return this.elements.get(y * this.n + x);
+        // return this.elements[this.addr(x,y)]
+        return this.elements.get(this.addr(x,y));
     }
 
     set(x: number, y: number, value: boolean): void {
-        this.elements.set(y*this.n+x, value);
+        // this.elements[this.addr(x,y)] = value;
+        this.elements.set(this.addr(x,y), value);
+    }
+
+    flip(x: number, y: number) {
+        // this.set(x,y,!this.at(x,y))
+        this.elements.toggle(this.addr(x,y))
+    }
+
+    addr(x: number, y: number) {
+        return y * (this.m) + x;
     }
 }
 
@@ -50,14 +51,17 @@ export default class Grid {
         dims: { x: number, y: number },
         color: Color,
         initFn: (location: Location) => boolean = () => flip(true, false),
-        translucent: boolean = false
+        translucent: boolean = false,
+        // scale: number = 64
     ) {
-        console.log("assemble grid", { dims, color })
-        return new Grid(
+        // console.log("assemble grid", { dims, color })
+        let g = new Grid(
             dims.x,
             dims.y,
             { initFn, color, translucent, }
         )
+        // g.scale(scale)
+        return g
     }
 
     private structure: GridStructure
@@ -65,69 +69,95 @@ export default class Grid {
     constructor(
         public m: number,
         public n: number,
-        public config: GridConfig
+        public config: GridConfig = {
+            initFn: () => flip(true, false),
+            color: 'red',
+            translucent: true,
+        }
     ) {
         this.structure = new GridStructure(m,n);
         iota(m).forEach(i => iota(n).forEach((j) => {
             let loc={x:i,y:j}
             this.put(loc, config.initFn(loc))
         }));
-        // if (config.initFn) {}
     }
 
-    //colorFor(value: T): Color {
-    //    if (this.config.color) {
-    //        return this.config.color(value)
-    //    } else {
-    //        return 'white';
-    //    }
-    //}
+    withinBounds(x: number, y: number): boolean {
+        let x0 = 0, y0 = 0, x1 = this.m-1, y1 = this.n-1
+        return x >= x0 && y >= y0 && x <= x1 && y <= y1
+    }
 
-    at(location: Location): boolean | undefined { //} | undefined {
+    at(location: Location): boolean | undefined {
         let { x, y } = location;
         if (this.withinBounds(x,y)) {
             return this.structure.at(x,y)
         }
     }
 
-
     put(location: Location, value: boolean) {
-        // console.log("PUT", { location, value, color: this.config.color })
         let { x, y } = location;
-        return this.structure.set(x,y,value)
-    }
-
-    private get(x: number, y: number): boolean | undefined {
-        return this.at({ x, y })
-    }
-
-    shift(dx: number, dy: number, empty: () => boolean = () => flip(true, false)) {
-        let newElements = [];
-        for (let i = 0; i < this.m; i++) {
-            for (let j = 0; j < this.n; j++) {
-                let x = i, y = j;
-                let cell = this.at({x: x+dx,y: y+dy})
-                if (cell !== undefined) {
-                    newElements[y*this.m+x] = cell;
-                } else {
-                     newElements[y*this.m+x] = empty()
-                }
-            }
+        if (this.withinBounds(x, y)) {
+            this.structure.set(x, y, value)
+            return true;
         }
-        this.structure.setAll(newElements);
+        return false;
+    }
+
+    activate(location: Location) {
+        this.put(location, true)
+    }
+
+    deactivate(location: Location) {
+        this.put(location, false)
+    }
+
+    scale(z: number=2) {
+        console.log("SCALE", {z })
+        let newStructure: GridStructure = new GridStructure(this.m, this.n)
+        // let newElements: boolean[] = [];
+        eachMatrixCoordinate(this.m, this.n, (x: number, y: number) => {
+            let x0 = Math.floor(x / z)
+            let y0 = Math.floor(y / z)
+            let c = this.at({ x: x0, y: y0 })
+            if (c !== undefined) {
+                newStructure.set(x,y,c)
+                // newElements.push(c)
+            }
+        })
+        this.structure = newStructure; //.setAll(newElements);
+        return this;
+    }
+
+    shift(dx: number = 0, dy: number = 0, empty: () => boolean = () => flip(true, false)) {
+        let newStructure: GridStructure = new GridStructure(this.m, this.n)
+        eachMatrixCoordinate(this.m, this.n, (x: number, y: number) => {
+            if (this.withinBounds(x + dx, y + dy)) {
+                let cell = this.at({
+                    x: x + dx,
+                    y: y + dy
+                })
+                if (cell !== undefined) {
+                    newStructure.set(x, y, cell)
+                }
+            } else {
+                newStructure.set(x,y,empty())
+            }
+        })
+        this.structure = newStructure;
+        return this;
     }
 
     static neighborsMap: Location[][][] = []
     static neighbors(location: Location): Location[] {
-        let {x,y} = location;
+        let { x, y } = location;
         if (Grid.neighborsMap[x] && Grid.neighborsMap[x][y]) {
             return Grid.neighborsMap[x][y]
         } else {
             let i = x, j = y;
             let list = [
                 { x: i - 1, y: j },
-                { x: i, y: j - 1 },
-                { x: i, y: j + 1 },
+                { x: i,     y: j - 1 },
+                { x: i,     y: j + 1 },
                 { x: i + 1, y: j },
                 { x: i - 1, y: j - 1 },
                 { x: i - 1, y: j + 1 },
@@ -169,39 +199,6 @@ export default class Grid {
         }
     }
 
-    conway({ active, neighbors, birth, lonely, starve }: ConwayConfig): Conway {
-        let ns = count(neighbors, Boolean) //n => n) //this.isActive(n))
-        if (active) {
-            if (ns <= lonely || ns >= starve) {
-                return 'death';
-            }
-        } else {
-            if (ns === birth) {
-                return 'birth';
-            }
-        }
-        return 'unchanged';
-    }
-
-    simpleConway(
-        birth: number = 3,
-        lonely: number = 1,
-        starve: number = 4
-    ): ConwayCallback {
-        return (cell: boolean, neighbors: boolean[]) => {
-            return this.conway({
-                active: cell, //: this.isActive(cell),
-                neighbors,
-                birth,
-                lonely,
-                starve,
-            });
-        };
-    }
-
-    withinBounds(x: number, y: number): boolean {
-        return x >= 0 && y >= 0 && x <= this.m && y <= this.n
-    }
 
     gatherNeighbors(location: Location, radius: number = 1): boolean[] {
         if (radius < 1) { throw new Error("Neighborhoods must have a radius > 1")}
@@ -213,9 +210,7 @@ export default class Grid {
         }
         let neighborCells: boolean[] = [];
         for (let loc of neighbors) {
-        // for (let i=0; i<neighbors.length; i++) {
-        // neighbors.forEach(loc => {
-            let val = this.at(loc) //neighbors[i])
+            let val = this.at(loc)
             if (val !== undefined) {
                 neighborCells.push(val)
             }
@@ -236,7 +231,7 @@ export default class Grid {
         }
     }
 
-    gol(cellCallback: ConwayCallback = this.simpleConway(), radius: number = 1) {
+    gol(cellCallback: ConwayCallback = simpleConway(), radius: number = 1) {
         let books: { life: Location[], death: Location[] } = { life: [], death: [] }
         for (let i = 0; i < this.m; i++) {
             for (let j = 0; j < this.n; j++) {
@@ -255,19 +250,6 @@ export default class Grid {
         })
     }
 
-    activate(location: Location) {
-        if (this.withinBounds(location.x, location.y)) {
-            this.put(location, true)
-            // this.config.onActivate(location, this)
-        }
-    }
-
-    deactivate(location: Location) {
-        if (this.withinBounds(location.x, location.y)) {
-            // this.config.onDeactivate(location, this)
-            this.put(location, false)
-        }
-    }
 
     noise(fz=0.1) {
          for (let i = 0; i < this.m; i++) {
@@ -276,7 +258,7 @@ export default class Grid {
                     let x = i, y = j;
                     let cell = this.at({ x, y })
                     if (cell !== undefined) {
-                        this.put({x,y}, flip(true, false))
+                        this.structure.flip(x,y) //.put({x,y}, flip(true, false))
                     }
                 }
             }

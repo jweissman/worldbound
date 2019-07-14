@@ -5,19 +5,29 @@ import { dimensions } from "./WorldSize";
 import { flip } from "../../util/flip";
 import { iota } from "../../util/iota";
 import { PlanetaryEvolution, Evolution } from "./Evolution";
+import { Location } from '../../types/Location';
 
 type Dimensions = { x: number, y: number }
 
+class Person {
+    constructor(private location: Location) {}
+}
+
 export class World {
+    private player: Person = new Person({x:10,y:10})
     private stack: Stack;
     private dims: Dimensions
     private ticks = 0;
+
     private evolutionarySeries: Evolution[] = [
-        PlanetaryEvolution.cloudsForm,
+        PlanetaryEvolution.animalsWander,
         PlanetaryEvolution.cloudsGather,
-        PlanetaryEvolution.oceanLevelsRise,
-        PlanetaryEvolution.windPushesClouds(1, 1),
+        PlanetaryEvolution.windPushesClouds(-1,-1),
+        PlanetaryEvolution.cloudsForm,
         PlanetaryEvolution.grassGrows,
+        PlanetaryEvolution.treesGrow,
+        PlanetaryEvolution.trailsDecay,
+        // PlanetaryEvolution.oceanLevelsRise,
     ]
 
     constructor(private config: WorldConfig = defaultConfig) {
@@ -25,18 +35,33 @@ export class World {
         this.stack = new Stack({
             water: Grid.assemble(this.dims, 'blue', () => flip(true, false, config.waterRatio)),
             grass: Grid.assemble(this.dims, 'green', () => false),
-            // trees: Grid.boolean(this.dims, 'dark-green', () => flip),
-            // upperClouds: Grid.boolean(this.dims, 'gray', () => flip(true, false, config.cloudRatio), true),
-            // animals: Grid.boolean(this.dims, 'orange', () => false)
-            // people: Grid.boolean(this.dims, 'yellow', () => false)
+            trees: Grid.assemble(this.dims, 'dark-green', () => false),
+            // attach names?
+            trail: Grid.assemble(this.dims, 'pink', () => false, true),
+            path: Grid.assemble(this.dims, 'light-brown', () => false),
+            animals: Grid.assemble(this.dims, 'white', () => flip(true, false, 0.1)),
             clouds: Grid.assemble(this.dims, 'white', () => flip(true, false, config.cloudRatio), true),
         })
 
-        for (let i of iota(5)) { this.evolve() }
+        let q=2, z = 3.0
+        let n = 0.12 * 10 ** 2
+        for (let j of iota(q)) {
+            for (let i of iota(n)) {
+                PlanetaryEvolution.oceanLevelsRise(this.stack.layers)
+                // this.evolve();
+                console.log("startup evolution I", (i / n) * 100, j)
+            }
+            this.stack.layers.water.scale(z/q) //1.675)
+            for (let i of iota(n)) {
+                // this.evolve();
+                PlanetaryEvolution.oceanLevelsRise(this.stack.layers)
+                console.log("startup evolution II", (i / n) * 100, j)
+            }
+        }
     }
 
     get layers() { return this.stack.layers; }
-    
+
     evolve(): boolean {
         let evolved = false;
         this.ticks += 1;

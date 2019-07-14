@@ -1,30 +1,23 @@
 import WorldView from "../actors/WorldView";
-import { Scene, Actor, Color, LockCameraToActorStrategy } from "excalibur";
-import { NavController } from "../Nav";
+import { Scene } from "excalibur";
 import { Game } from "../Game";
-
-// class Player extends Actor {}
+import { NavController } from "../Nav";
 
 export class Life extends Scene {
-    // private nav: NavController;
     private worldView: WorldView;
-    // private player: Player;
+    private nav: NavController;
     constructor(private game: Game) {
         super(game);
-        // this.nav = new NavController(game, this.camera);
-        this.worldView = new WorldView();
-        // this.player = new Player(100,100,10,10,Color.Red)
-        // this.camera.addStrategy(new LockCameraToActorStrategy(this.player))
-        // this.camera.zoom(8)
+        this.worldView = new WorldView(game.world);
+        this.nav = new NavController(game, this.camera)
     }
     onInitialize() {
         this.add(this.worldView);
-        // this.add(this.player)
     }
     onActivate() {
-        // this.nav.activate();
+        this.nav.activate()
     }
     onDeactivate() {
-        // this.nav.deactivate();
+        this.nav.deactivate()
     }
 }
