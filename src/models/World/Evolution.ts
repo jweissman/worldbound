@@ -17,14 +17,12 @@ export class PlanetaryEvolution {
 
     static cloudsGather(layers: StackLayers): void {
         let { clouds } = layers;
-        // clouds.noise(0.00125)
         clouds.smooth(pick(1, 2, 4), 0.212)
-        // PlanetaryEvolution.cloudsForm(layers)
     }
 
     static oceanLevelsRise(layers: StackLayers): void {
         let { water } = layers;
-        let radius = pick(...iota(4).map(r => r + 1)) //1,2,3,4)
+        let radius = pick(...iota(4).map(r => r + 1))
         let epsilon = 0.1185
         water.smooth(radius, epsilon)
     }
@@ -67,7 +65,7 @@ export class PlanetaryEvolution {
                         if (neighbors >= 1 && veg > 5) { //} && Math.random() < 0.2) { //} && Math.random() < 0.02) {
                             return 'birth'
                         } else {
-                            if (veg > 7) { //} && Math.random() < 0.01) {
+                            if (veg > 7 && Math.random() < 0.1) {
                                 return 'birth'
                             }
                         }
@@ -135,7 +133,7 @@ export class PlanetaryEvolution {
                     return 'death'
                 }
                 else {
-                    if (Math.random() < 0.2) {
+                    if (Math.random() < 0.8) {
                         movers.push(loc)
                     }
                 }
@@ -147,7 +145,8 @@ export class PlanetaryEvolution {
                 animals.withinBounds(s.x, s.y) && !water.at(s) && !animals.at(s)
             )
             stepCandidates = stepCandidates.sort(() => Math.random() > 0.5 ? -1 : 1)
-            let step = stepCandidates.find(s => path.at(s)) ||
+            let step = stepCandidates.find(s => trees.at(s)) ||
+                stepCandidates.find(s => path.at(s)) ||
                 stepCandidates.find(s => trail.at(s))
             if (!step || Math.random() < 0.2) {
                 step = pick(...stepCandidates)
@@ -155,12 +154,22 @@ export class PlanetaryEvolution {
             if (step) {
                 animals.deactivate(location);
                 animals.activate(step);
-                if (Math.random() < 0.01) {
+                if (trees.at(step)) {
+                    trees.deactivate(step)
+                }
+                if (!path.at(location)) {
                     if (trail.at(location)) {
-                        path.activate(location)
+                        if (Math.random() < 0.05) {
+                            if (count(path.gatherNeighbors(location), Boolean) < 3) {
+                                path.activate(location)
+                            }
+                        }
                     } else {
-                        trail.activate(location)
-
+                        if (Math.random() < 0.7) {
+                            if (count(trail.gatherNeighbors(location), Boolean) < 4) {
+                                trail.activate(location)
+                            }
+                        }
                     }
                 }
             }

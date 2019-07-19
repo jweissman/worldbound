@@ -41,6 +41,7 @@ class WorldView extends Actor {
             ctx.fillRect(x, y, rows * this.sz, cols * this.sz)
 
             Object.entries(this.world.layers).forEach(([_layer, grid]) => {
+                if (!grid.config.visible) { return }
                 if (grid.config.translucent) {
                     ctx.globalAlpha = 0.6
                 }

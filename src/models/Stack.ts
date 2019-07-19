@@ -8,6 +8,7 @@ export type StackLayers = {
     clouds: Grid,
     trail: Grid,
     path: Grid,
+    humans: Grid,
 }
 
 class Stack {

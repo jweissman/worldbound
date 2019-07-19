@@ -12,6 +12,7 @@ interface GridConfig {
     initFn: (location: Location) => boolean
     color?: Color
     translucent?: boolean
+    visible?: boolean
 }
 
 class GridStructure {
@@ -52,13 +53,14 @@ export default class Grid {
         color: Color,
         initFn: (location: Location) => boolean = () => flip(true, false),
         translucent: boolean = false,
+        visible: boolean = true,
         // scale: number = 64
     ) {
         // console.log("assemble grid", { dims, color })
         let g = new Grid(
             dims.x,
             dims.y,
-            { initFn, color, translucent, }
+            { initFn, color, translucent, visible }
         )
         // g.scale(scale)
         return g
