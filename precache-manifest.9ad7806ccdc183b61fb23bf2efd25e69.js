@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "ce5159ad837db31d688d83e94e3c507c",
+    "revision": "877b0e2e23d521796faa951d6c4b2d42",
     "url": "/worldbound/index.html"
   },
   {
@@ -8,8 +8,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/worldbound/static/js/2.3b4bb1d3.chunk.js"
   },
   {
-    "revision": "7075868e0263fbe29d8c",
-    "url": "/worldbound/static/js/main.0ef514c1.chunk.js"
+    "revision": "328238b7d92c2fd66554",
+    "url": "/worldbound/static/js/main.bc615219.chunk.js"
   },
   {
     "revision": "69650a08f44b6715790b",

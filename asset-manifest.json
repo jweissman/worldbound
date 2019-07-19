@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.js": "/worldbound/static/js/main.0ef514c1.chunk.js",
-    "main.js.map": "/worldbound/static/js/main.0ef514c1.chunk.js.map",
+    "main.js": "/worldbound/static/js/main.bc615219.chunk.js",
+    "main.js.map": "/worldbound/static/js/main.bc615219.chunk.js.map",
     "runtime~main.js": "/worldbound/static/js/runtime~main.a3cbb249.js",
     "runtime~main.js.map": "/worldbound/static/js/runtime~main.a3cbb249.js.map",
     "static/js/2.3b4bb1d3.chunk.js": "/worldbound/static/js/2.3b4bb1d3.chunk.js",
     "static/js/2.3b4bb1d3.chunk.js.map": "/worldbound/static/js/2.3b4bb1d3.chunk.js.map",
     "index.html": "/worldbound/index.html",
-    "precache-manifest.e740d4b316cc232d21660b38414189f2.js": "/worldbound/precache-manifest.e740d4b316cc232d21660b38414189f2.js",
+    "precache-manifest.9ad7806ccdc183b61fb23bf2efd25e69.js": "/worldbound/precache-manifest.9ad7806ccdc183b61fb23bf2efd25e69.js",
     "service-worker.js": "/worldbound/service-worker.js"
   }
 }

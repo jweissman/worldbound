@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/worldbound/precache-manifest.e740d4b316cc232d21660b38414189f2.js"
+  "/worldbound/precache-manifest.9ad7806ccdc183b61fb23bf2efd25e69.js"
 );
 
 self.addEventListener('message', (event) => {
